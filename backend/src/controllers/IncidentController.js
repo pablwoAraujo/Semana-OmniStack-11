@@ -2,8 +2,17 @@ const connection = require('../database/connection');
 
 module.exports= {
     async index (request, response) {
-        const incidents = await connection('incidents').select('*');
+        const {page =1} = request.query;
+
+        const [count] = await connection('incidents').count();
+
+        const incidents = await connection('incidents')
+        .join('ongs', 'ongs.id', "=", "incidents.ong_id")
+        .limit(5)
+        .offset((page-1)*5)
+        .select(['incidents.*', 'ongs.name', 'ongs.email', 'ongs.whatsapp', 'ongs.city', 'ongs.uf']);
         
+        response.header('X-Total-Count', count['count(*)']);
         return response.json(incidents);
     },
 
@@ -28,7 +37,7 @@ module.exports= {
             .first();
 
         if(typeof incidents === "undefined"){
-            return response.status(404).json({ error: "404 Not Found"});
+            return response.status(400).json({ error: "error: No incidents found with this ID"});
         }
 
         if(incidents.ong_id != ong_id){
